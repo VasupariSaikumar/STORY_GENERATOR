@@ -15,7 +15,7 @@ except Exception as e:
 
 # --- Model Setup ---
 # Using a fast and capable model
-model = genai.GenerativeModel('gemini-1.5-flash')
+model = genai.GenerativeModel('gemini-1.5-flash-latest')
 
 st.title("🤖 AI-Powered Story Generator (Google AI)")
 
