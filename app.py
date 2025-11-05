@@ -1,57 +1,56 @@
 import streamlit as st
-import platform
+from openai import OpenAI
 
-# --- Start Debugging ---
-st.set_page_config(layout="wide")
-st.title("App Debugger 🐛")
-st.write(f"--- Step 1: App has started. ---")
-st.write(f"Python version: {platform.python_version()}")
-st.write(f"Streamlit version: {st.__version__}")
-
+# Initialize the OpenAI client
+# We proved in the debug test that this line works.
 try:
-    st.write("--- Step 2: Attempting to import OpenAI... ---")
-    from openai import OpenAI
-    st.write(f"✅ SUCCESS: OpenAI imported.")
-except Exception as e:
-    st.error(f"❌ FAILED at Step 2 (Import): {e}")
-    st.write("This means 'openai' is not installed correctly. Check requirements.txt.")
-    st.stop()
-
-try:
-    st.write("--- Step 3: Attempting to read secret 'OPENAI_API_KEY'... ---")
-    my_key = st.secrets["OPENAI_API_KEY"]
-    st.write("✅ SUCCESS: Secret read from st.secrets.")
-    
-    if not my_key:
-         st.error("❌ FAILED: 'OPENAI_API_KEY' exists but is EMPTY.")
-         st.stop()
-    elif "sk-" not in my_key:
-         st.error("❌ FAILED: The value for 'OPENAI_API_KEY' does not look like a valid key.")
-         st.stop()
-    else:
-         st.write("Key appears to be a valid format (starts with 'sk-').")
-
+    client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 except KeyError:
-    st.error("❌ FAILED: 'OPENAI_API_KEY' NOT FOUND in st.secrets.")
-    st.write("This is a 'KeyError'. It means the secret name does not exist or has a typo.")
-    st.write("Go to Settings > Secrets and make sure the name is 100% correct.")
+    st.error("OPENAI_API_KEY not found. Please add it to your Streamlit app's 'Secrets' settings.")
     st.stop()
 except Exception as e:
-    st.error(f"❌ FAILED at Step 3 (Unknown Error): {e}")
+    st.error(f"Error initializing OpenAI client: {e}")
     st.stop()
 
-try:
-    st.write("--- Step 4: Attempting to initialize OpenAI client... ---")
-    client = OpenAI(api_key=my_key)
-    st.write("✅ SUCCESS: OpenAI client initialized.")
-except Exception as e:
-    st.error(f"❌ FAILED at Step 4 (Client Init): {e}")
-    st.write("This could be a bad API key or an OpenAI service issue.")
-    st.stop()
-    
-st.success("--- App is fully initialized! If you see this, the problem is in your main app logic. ---")
-st.divider()
+st.title("🤖 AI-Powered Story Generator")
 
-# --- Your Original App Code (can be added back later) ---
-# st.title("🤖 AI-Powered Story Generator")
-# ...
+# --- User Inputs ---
+genre = st.text_input("Enter a genre or theme (e.g., Fantasy, Mystery)")
+mood = st.selectbox("Choose a mood:", ["Happy", "Dark", "Suspenseful", "Adventurous", "Romantic"])
+length = st.slider("Select story length (approx. words):", 100, 1000, 500, 50)
+
+# --- Button Logic ---
+if st.button("Generate Story"):
+    if not genre:
+        st.error("Please enter a genre or theme to begin!")
+    else:
+        prompt = f"Write a {mood.lower()} story about {genre}. The story should be approximately {length} words long."
+        
+        with st.spinner("Generating your story... This might take a moment."):
+            try:
+                # Use the new chat completions endpoint
+                response = client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[
+                        {"role": "system", "content": "You are a creative and professional storyteller."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.8,
+                    max_tokens=1500
+                )
+                
+                story = response.choices[0].message.content
+
+                # --- Display Results ---
+                st.subheader("Here's Your Story:")
+                st.write(story)
+                
+                st.download_button(
+                    label="Download Story",
+                    data=story,
+                    file_name=f"{genre.lower().replace(' ','_')}_story.txt",
+                    mime="text/plain"
+                )
+            
+            except Exception as e:
+                st.error(f"An error occurred: {e}")
