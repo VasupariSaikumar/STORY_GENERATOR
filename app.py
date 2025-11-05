@@ -1,18 +1,23 @@
 import streamlit as st
-from openai import OpenAI
+import google.generativeai as genai
+import os
 
-# Initialize the OpenAI client
-# We proved in the debug test that this line works.
+# --- Client Initialization ---
 try:
-    client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+    # Configure the Google AI client from Streamlit secrets
+    genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
 except KeyError:
-    st.error("OPENAI_API_KEY not found. Please add it to your Streamlit app's 'Secrets' settings.")
+    st.error("GOOGLE_API_KEY not found. Please add it to your Streamlit app's 'Secrets' settings.")
     st.stop()
 except Exception as e:
-    st.error(f"Error initializing OpenAI client: {e}")
+    st.error(f"Error initializing Google AI client: {e}")
     st.stop()
 
-st.title("🤖 AI-Powered Story Generator")
+# --- Model Setup ---
+# Using a fast and capable model
+model = genai.GenerativeModel('gemini-1.5-flash')
+
+st.title("🤖 AI-Powered Story Generator (Google AI)")
 
 # --- User Inputs ---
 genre = st.text_input("Enter a genre or theme (e.g., Fantasy, Mystery)")
@@ -28,18 +33,11 @@ if st.button("Generate Story"):
         
         with st.spinner("Generating your story... This might take a moment."):
             try:
-                # Use the new chat completions endpoint
-                response = client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=[
-                        {"role": "system", "content": "You are a creative and professional storyteller."},
-                        {"role": "user", "content": prompt}
-                    ],
-                    temperature=0.8,
-                    max_tokens=1500
-                )
+                # This is the new API call
+                response = model.generate_content(prompt)
                 
-                story = response.choices[0].message.content
+                # This is the new way to get the text
+                story = response.text
 
                 # --- Display Results ---
                 st.subheader("Here's Your Story:")
