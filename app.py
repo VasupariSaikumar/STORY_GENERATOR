@@ -1,35 +1,53 @@
 import streamlit as st
 import google.generativeai as genai
 
-st.title("Google AI Model Debugger 🔬")
-
+# --- Client Initialization ---
 try:
-    st.write("--- Step 1: Configuring Google AI client... ---")
+    # Configure the Google AI client from Streamlit secrets
     genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
-    st.write("✅ SUCCESS: Google AI client configured.")
 except KeyError:
-    st.error("❌ FAILED: 'GOOGLE_API_KEY' NOT FOUND in st.secrets.")
-    st.write("Please check your Streamlit secrets again.")
+    st.error("GOOGLE_API_KEY not found. Please add it to your Streamlit app's 'Secrets' settings.")
     st.stop()
 except Exception as e:
-    st.error(f"❌ FAILED at Step 1 (Config): {e}")
+    st.error(f"Error initializing Google AI client: {e}")
     st.stop()
 
-st.write("--- Step 2: Fetching available models... ---")
-st.write("This will show all models your API key has access to.")
+# --- Model Setup ---
+# THIS IS THE CORRECTED LINE, using the full name from your log
+model = genai.GenerativeModel('models/gemini-pro-latest')
 
-try:
-    st.subheader("Available Models:")
-    
-    # This is the command from the error message: ListModels
-    for m in genai.list_models():
-        st.write(f"**Model Name:** `{m.name}`")
-        st.write(f"**Supported Methods:** `{m.supported_generation_methods}`")
-        st.divider()
+st.title("🤖 AI-Powered Story Generator (Google AI)")
+
+# --- User Inputs ---
+genre = st.text_input("Enter a genre or theme (e.g., Fantasy, Mystery)")
+mood = st.selectbox("Choose a mood:", ["Happy", "Dark", "Suspenseful", "Adventurous", "Romantic"])
+length = st.slider("Select story length (approx. words):", 100, 1000, 500, 50)
+
+# --- Button Logic ---
+if st.button("Generate Story"):
+    if not genre:
+        st.error("Please enter a genre or theme to begin!")
+    else:
+        prompt = f"Write a {mood.lower()} story about {genre}. The story should be approximately {length} words long."
         
-    st.success("--- Model list complete. ---")
-    st.info("Look for a model in the list above that includes **'generateContent'** in its supported methods. That is the exact name we must use.")
-    
-except Exception as e:
-    st.error(f"❌ FAILED at Step 2 (ListModels): {e}")
-    st.write("This could mean your API key is invalid or has no permissions.")
+        with st.spinner("Generating your story... This might take a- moment."):
+            try:
+                # This is the API call
+                response = model.generate_content(prompt)
+                
+                # This is the way to get the text
+                story = response.text
+
+                # --- Display Results ---
+                st.subheader("Here's Your Story:")
+                st.write(story)
+                
+                st.download_button(
+                    label="Download Story",
+                    data=story,
+                    file_name=f"{genre.lower().replace(' ','_')}_story.txt",
+                    mime="text/plain"
+                )
+            
+            except Exception as e:
+                st.error(f"An error occurred: {e}")
